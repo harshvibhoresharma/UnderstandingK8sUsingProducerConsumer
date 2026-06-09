@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: consumer
+  namespace: default
+spec:
+  replicas: 1           # KEDA will control this dynamically
+  selector:
+    matchLabels:
+      app: consumer
+  template:
+    metadata:
+      labels:
+        app: consumer
+    spec:
+      containers:
+        - name: consumer
+          image: consumer-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: app-config
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "150m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+# ClusterIP: consumer API is only reachable inside the cluster
+# Use kubectl port-forward to hit /status from your machine
+apiVersion: v1
+kind: Service
+metadata:
+  name: consumer-service
+  namespace: default
+spec:
+  selector:
+    app: consumer
+  ports:
+    - port: 8001
+      targetPort: 8001
+  type: ClusterIP

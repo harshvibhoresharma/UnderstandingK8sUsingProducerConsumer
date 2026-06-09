@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: producer
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: producer
+  template:
+    metadata:
+      labels:
+        app: producer
+    spec:
+      containers:
+        - name: producer
+          image: producer-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: app-config
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "150m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+# NodePort: makes the producer API reachable from outside the cluster
+# Access via: minikube ip + nodePort (30001)
+apiVersion: v1
+kind: Service
+metadata:
+  name: producer-service
+  namespace: default
+spec:
+  selector:
+    app: producer
+  ports:
+    - port: 8000          # port inside cluster
+      targetPort: 8000    # port on the pod
+      nodePort: 30001     # port on your machine (minikube ip:30001)
+  type: NodePort
+---
+# HPA: scale producer pods when CPU > 60%
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: producer-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: producer
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
