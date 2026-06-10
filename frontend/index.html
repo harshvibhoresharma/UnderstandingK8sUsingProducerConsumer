@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>KEDA Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">K8</div>
+    <div>
+      <h1>KEDA monitoring dashboard</h1>
+      <div class="header-sub">producer → redis queue → consumer</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="last-updated">not polled yet</span>
+    <button onclick="poll()" id="poll-btn">↻ poll now</button>
+    <button onclick="toggleAuto()" id="auto-btn">auto: off</button>
+  </div>
+</div>
+
+<div class="endpoint-bar">
+  <span style="font-size:12px;font-weight:600;color:var(--text-muted);">endpoints</span>
+  <div class="endpoint-group">
+    <label>producer</label>
+    <input id="producer-url" value="http://localhost:8000" />
+  </div>
+  <div class="endpoint-group">
+    <label>consumer</label>
+    <input id="consumer-url" value="http://localhost:8001" />
+  </div>
+  <div id="conn-indicator">
+    <div class="dot" id="conn-dot"></div>
+    <span id="conn-text">not connected</span>
+  </div>
+</div>
+
+<div class="metrics">
+  <div class="metric highlight">
+    <div class="metric-label">queue length</div>
+    <div class="metric-value" id="m-queue">—</div>
+    <div class="metric-sub">tasks waiting in Redis</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">completed</div>
+    <div class="metric-value" id="m-done">—</div>
+    <div class="metric-sub">total processed</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">consumer pods</div>
+    <div class="metric-value" id="m-pods">—</div>
+    <div class="metric-sub">KEDA scaled replicas</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">avg process time</div>
+    <div class="metric-value" id="m-avg">—</div>
+    <div class="metric-sub">seconds per task</div>
+  </div>
+</div>
+
+<div class="submit-bar">
+  <input id="task-name" placeholder="task name (e.g. resize-image)" style="max-width:200px;" />
+  <input id="task-payload" placeholder="payload (e.g. file=logo.png)" />
+  <button class="btn-primary" onclick="submitTask()">submit task</button>
+  <span id="submit-msg"></span>
+</div>
+
+<div class="grid-2">
+  <div class="panel">
+    <div class="panel-title">queue depth over time <span class="panel-badge">last 20 polls</span></div>
+    <div class="chart-wrap"><canvas id="queueChart"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">throughput <span class="panel-badge">tasks completed / poll</span></div>
+    <div class="chart-wrap"><canvas id="throughputChart"></canvas></div>
+  </div>
+</div>
+
+<div class="grid-2-1">
+  <div class="panel">
+    <div class="panel-title">recent tasks <span class="panel-badge" id="task-count">0 tasks</span></div>
+    <div class="task-list" id="task-list">
+      <div class="empty">poll to load tasks…</div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">consumer pods <span class="panel-badge" id="pod-count">0 pods</span></div>
+    <div class="pods-wrap" id="pods-wrap">
+      <div class="empty">poll to load pods…</div>
+    </div>
+    <div class="keda-info" id="keda-info" style="display:none;">
+      KEDA scaling: <span id="keda-min">1</span> min → <span id="keda-max">10</span> max
+      · trigger: redis queue length
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
